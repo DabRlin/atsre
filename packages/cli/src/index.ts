@@ -10,13 +10,59 @@
 import { Agent } from '@atsre/core'
 import { createClientFromEnv } from '@atsre/llm'
 import { allTools } from '@atsre/tools'
+import { resolve } from 'path'
+import { existsSync } from 'fs'
+
+/**
+ * 加载环境变量
+ * 
+ * 在 monorepo 中，需要明确加载 root 目录的 .env 文件
+ */
+async function loadEnv() {
+  // 从当前文件位置向上查找 root 目录的 .env
+  // 当前文件: packages/cli/src/index.ts
+  // Root: ../../../
+  const rootDir = resolve(import.meta.dir, '../../..')
+  const envPath = resolve(rootDir, '.env')
+  
+  if (existsSync(envPath)) {
+    // 使用 Bun.file 读取并解析 .env
+    const envContent = Bun.file(envPath)
+    const text = await envContent.text()
+    
+    // 简单的 .env 解析
+    text.split('\n').forEach(line => {
+      const trimmed = line.trim()
+      // 跳过注释和空行
+      if (!trimmed || trimmed.startsWith('#')) return
+      
+      // 解析 KEY=VALUE 或 KEY="VALUE"
+      const match = trimmed.match(/^([^=]+)=(.*)$/)
+      if (match && match[1] && match[2]) {
+        const key = match[1].trim()
+        let value = match[2].trim()
+        
+        // 去除引号
+        if ((value.startsWith('"') && value.endsWith('"')) || 
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1)
+        }
+        
+        process.env[key] = value
+      }
+    })
+  }
+}
 
 /**
  * 主函数
  */
 async function main() {
   try {
-    // 1. 检查命令行参数
+    // 1. 加载环境变量
+    await loadEnv()
+    
+    // 2. 检查命令行参数
     const args = process.argv.slice(2)
     if (args.length === 0) {
       console.log('用法: bun run src/index.ts "你的任务描述"')
@@ -27,9 +73,6 @@ async function main() {
     }
 
     const userMessage = args.join(' ')
-
-    // 2. 加载环境变量（.env 文件）
-    // Bun 会自动加载 .env 文件，无需额外的 dotenv 库
     
     // 3. 创建 LLM 客户端
     console.log('正在初始化 Agent...\n')
