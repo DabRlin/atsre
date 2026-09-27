@@ -11,7 +11,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@atsre/core": "workspace:*"
+    "@atsre/core": "workspace:*",
+    "@atsre/llm": "workspace:*",
+    "@atsre/tools": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

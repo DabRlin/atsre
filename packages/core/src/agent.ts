@@ -13,11 +13,11 @@ import type { AgentConfig, AgentResult, StepResult } from './types'
  */
 export class Agent {
   private llm: AnthropicClient
-  private tools: Map<string, Tool>
+  private tools: Map<string, Tool<any>>
   private toolDefinitions: AnthropicTool[]
   private config: Required<AgentConfig>
 
-  constructor(llm: AnthropicClient, tools: Tool[], config: AgentConfig = {}) {
+  constructor(llm: AnthropicClient, tools: Tool<any>[], config: AgentConfig = {}) {
     this.llm = llm
     
     // 将工具数组转换为 Map，方便按名称查找

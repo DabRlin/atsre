@@ -18,6 +18,8 @@
       },
       "dependencies": {
         "@atsre/core": "workspace:*",
+        "@atsre/llm": "workspace:*",
+        "@atsre/tools": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "latest",
