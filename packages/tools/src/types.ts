@@ -51,10 +51,11 @@ export function toAnthropicTool(tool: Tool): AnthropicTool {
     
     // 基础类型映射
     if (zodType._def.typeName === 'ZodString') {
-      properties[key] = { type: 'string' }
+      const prop: Record<string, unknown> = { type: 'string' }
       if (zodType.description) {
-        properties[key] = { ...properties[key], description: zodType.description }
+        prop.description = zodType.description
       }
+      properties[key] = prop
     }
     
     // 检查是否为必需字段
