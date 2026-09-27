@@ -1,0 +1,17 @@
+{
+  "name": "atsre",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter @atsre/cli dev",
+    "start": "bun run --filter @atsre/cli start",
+    "type-check": "bun run --recursive type-check"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.3.3"
+  }
+}

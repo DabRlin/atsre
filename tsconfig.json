@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    // 基础选项
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    
+    // 类型检查
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    
+    // 输出
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    
+    // 互操作性
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    // Bun 特性
+    "types": ["bun-types"],
+    "skipLibCheck": true
+  }
+}
