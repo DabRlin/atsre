@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter @atsre/cli dev",
-    "start": "bun run --filter @atsre/cli start",
+    "dev": "cd packages/cli && bun run src/index.ts",
+    "start": "cd packages/cli && bun run src/index.ts",
     "type-check": "bun run --recursive type-check"
   },
   "devDependencies": {

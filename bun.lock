@@ -19,6 +19,7 @@
       "dependencies": {
         "@atsre/core": "workspace:*",
         "@atsre/llm": "workspace:*",
+        "@atsre/session": "workspace:*",
         "@atsre/tools": "workspace:*",
       },
       "devDependencies": {
@@ -47,6 +48,17 @@
         "typescript": "^5.3.3",
       },
     },
+    "packages/session": {
+      "name": "@atsre/session",
+      "version": "0.1.0",
+      "dependencies": {
+        "@atsre/llm": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5.3.3",
+      },
+    },
     "packages/tools": {
       "name": "@atsre/tools",
       "version": "0.1.0",
@@ -67,6 +79,8 @@
     "@atsre/core": ["@atsre/core@workspace:packages/core"],
 
     "@atsre/llm": ["@atsre/llm@workspace:packages/llm"],
+
+    "@atsre/session": ["@atsre/session@workspace:packages/session"],
 
     "@atsre/tools": ["@atsre/tools@workspace:packages/tools"],
 

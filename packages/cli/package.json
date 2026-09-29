@@ -13,7 +13,8 @@
   "dependencies": {
     "@atsre/core": "workspace:*",
     "@atsre/llm": "workspace:*",
-    "@atsre/tools": "workspace:*"
+    "@atsre/tools": "workspace:*",
+    "@atsre/session": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.3.3",
