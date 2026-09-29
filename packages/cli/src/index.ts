@@ -21,14 +21,17 @@ import { existsSync } from 'fs'
 /**
  * 加载环境变量
  * 
- * 在 monorepo 中，需要明确加载 root 目录的 .env 文件
+ * 从 ~/.atsre/config.env 读取配置
  */
 async function loadEnv() {
-  // 从当前文件位置向上查找 root 目录的 .env
-  // 当前文件: packages/cli/src/index.ts
-  // Root: ../../../
-  const rootDir = resolve(import.meta.dir, '../../..')
-  const envPath = resolve(rootDir, '.env')
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '.'
+  const configDir = resolve(homeDir, '.atsre')
+  const envPath = resolve(configDir, 'config.env')
+  
+  // 如果配置文件不存在，尝试从旧位置迁移或创建示例
+  if (!existsSync(envPath)) {
+    await initConfig(configDir, envPath)
+  }
   
   if (existsSync(envPath)) {
     // 使用 Bun.file 读取并解析 .env
@@ -57,6 +60,39 @@ async function loadEnv() {
       }
     })
   }
+}
+
+/**
+ * 初始化配置文件
+ * 
+ * 如果配置文件不存在，创建配置模板
+ */
+async function initConfig(configDir: string, envPath: string) {
+  const { mkdir, writeFile } = await import('fs/promises')
+  
+  // 确保配置目录存在
+  if (!existsSync(configDir)) {
+    await mkdir(configDir, { recursive: true })
+  }
+  
+  // 创建配置模板
+  const template = `# Anthropic API 配置
+# 如果使用官方 API，只需要填写 API_KEY
+ANTHROPIC_API_KEY=your_api_key_here
+
+# 如果使用第三方兼容服务，需要同时配置 BASE_URL
+# ANTHROPIC_BASE_URL=https://your-custom-endpoint.com
+
+# 指定使用的模型（可选，默认使用 claude-sonnet-4-20250514）
+# 常见模型：
+# - claude-3-5-sonnet-20241022 (Sonnet 3.5 最新)
+# - claude-3-opus-20240229 (Opus 3)
+# - claude-3-sonnet-20240229 (Sonnet 3)
+# ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+`
+  await writeFile(envPath, template, 'utf-8')
+  console.log(`\n配置文件已创建: ${envPath}`)
+  console.log('请编辑该文件并填入您的 API 配置\n')
 }
 
 /**

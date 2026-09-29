@@ -18,10 +18,18 @@ packages/
 ├── core/       # Agent 核心循环逻辑
 ├── llm/        # LLM 调用封装
 ├── tools/      # 工具集 (read/write/bash)
-├── session/    # 会话管理和持久化（待实现）
+├── session/    # 会话管理和持久化
 ├── cli/        # 命令行入口
 └── tui/        # 终端UI（待实现）
 ```
+
+## 配置和数据
+
+**配置位置**: `~/.atsre/`
+- `config.env` - API 配置文件
+- `sessions/` - 会话存储目录（JSONL 格式）
+
+详见 [.atsre 目录说明](docs/atsre-directory.md)
 
 ## 核心概念
 
@@ -49,34 +57,69 @@ packages/
 ### ✅ Phase 0: 项目初始化
 设置 monorepo、配置 TypeScript、安装基础依赖
 
-### 🚧 Phase 1: 核心功能 (Day 1-2)
-- [ ] 实现 Agent 主循环
-- [ ] 实现 3 个基础工具
-- [ ] 简单的 CLI 入口
-- [ ] 基础测试
+### ✅ Phase 1: 核心功能
+- ✅ 实现 Agent 主循环（ReAct 循环）
+- ✅ 实现 3 个基础工具（read/write/bash）
+- ✅ 单次命令模式 CLI
+- ✅ 基础测试通过
 
-### 📋 Phase 2: 会话管理 (Day 3-4)
-- [ ] JSONL 格式会话存储
-- [ ] 多轮对话支持
-- [ ] 会话恢复
+### ✅ Phase 2: 会话管理
+- ✅ JSONL 格式会话存储
+- ✅ REPL 交互模式
+- ✅ 多轮对话支持
+- ✅ 会话恢复功能
+- ✅ 配置统一到 ~/.atsre/
 
-### 🎨 Phase 3: 体验优化 (Day 5+)
+### 📋 Phase 3: 体验优化 (计划中)
 - [ ] 彩色输出
-- [ ] Token 统计
+- [ ] 更好的错误提示
+- [ ] Token 统计优化
 - [ ] 流式输出
-- [ ] 错误处理优化
+
+## 使用方式
+
+### 配置
+
+首次运行前，配置 API 信息：
+
+```bash
+# 编辑配置文件
+vim ~/.atsre/config.env
+```
+
+填入你的 API 配置：
+```bash
+ANTHROPIC_API_KEY=your_api_key
+ANTHROPIC_BASE_URL=https://your-service.com  # 可选
+ANTHROPIC_MODEL=claude-sonnet-5               # 可选
+```
+
+### 运行
+
+```bash
+# 交互模式（REPL）
+bun run dev
+
+# 单次命令模式
+bun run dev "创建一个 hello.txt 文件"
+```
+
+详见 [快速开始](docs/getting-started.md)
 
 ## 新会话指南
 
 **当开启新会话时，请阅读以下文件：**
 
-1. `docs/task.md` - 完整的开发计划和验收标准
-2. `docs/guidelines.md` - 开发规范和代码风格
-3. `packages/*/README.md` - 各个包的具体实现说明
+1. `docs/getting-started.md` - 快速开始指南
+2. `docs/task.md` - 完整的开发计划和验收标准
+3. `docs/guidelines.md` - 开发规范和代码风格
+4. `docs/atsre-directory.md` - 配置和数据目录说明
+5. `docs/debug.md` - 调试记录
+6. `packages/*/README.md` - 各个包的具体实现说明
 
 **当前进度：**
-- 位置：Phase 0 → Phase 1 过渡
-- 下一步：初始化 monorepo 结构，实现核心 Agent 循环
+- 位置：Phase 2 已完成 ✅
+- 下一步：Phase 3 体验优化
 
 ## 设计原则
 
@@ -95,6 +138,6 @@ packages/
 
 ---
 
-**Version**: 0.1.0  
-**Last Updated**: 2026-09-27  
-**Status**: 🚀 开始 Phase 1
+**Version**: 0.2.0  
+**Last Updated**: 2026-09-29  
+**Status**: ✅ Phase 2 完成，进入 Phase 3
