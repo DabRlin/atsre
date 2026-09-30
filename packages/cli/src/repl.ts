@@ -8,6 +8,8 @@ import { Agent } from '@atsre/core'
 import type { AnthropicClient, Message } from '@atsre/llm'
 import { allTools } from '@atsre/tools'
 import { SessionStorage } from '@atsre/session'
+import { commandRegistry } from './commands'
+import type { CommandContext } from './commands'
 import * as readline from 'readline'
 
 /**
@@ -57,19 +59,12 @@ export async function startREPL(config: REPLConfig): Promise<never> {
   })
 
   console.log('\n欢迎使用 ATSRE Agent!')
-  console.log('输入 "exit" 或 "quit" 退出，按 Ctrl+C 也可以退出\n')
+  console.log('输入 /help 查看可用命令，/exit 退出\n')
 
   // 4. 主循环 - 使用 question 方法
   const askQuestion = () => {
     rl.question('\n> ', async (input: string) => {
       const userInput = input.trim()
-
-      // 检查退出命令
-      if (userInput === 'exit' || userInput === 'quit') {
-        console.log('\n再见！会话已保存到 ~/.atsre/sessions/' + sessionId + '.jsonl')
-        rl.close()
-        process.exit(0)
-      }
 
       // 检查空输入
       if (!userInput) {
@@ -77,6 +72,44 @@ export async function startREPL(config: REPLConfig): Promise<never> {
         return
       }
 
+      // 处理斜杠命令
+      if (userInput.startsWith('/')) {
+        const parts = userInput.split(/\s+/)
+        const commandName = parts[0]
+        if (!commandName) {
+          askQuestion()
+          return
+        }
+        const args = parts.slice(1)
+
+        try {
+          // 从注册表获取命令
+          const command = commandRegistry.get(commandName)
+          
+          if (command) {
+            // 构建命令上下文
+            const context: CommandContext = {
+              sessionId,
+              storage,
+              messages,
+              rl
+            }
+            
+            // 执行命令
+            await command.execute(args, context)
+          } else {
+            console.log(`\n未知命令: ${commandName}`)
+            console.log('输入 /help 查看可用命令\n')
+          }
+        } catch (error: any) {
+          console.error('\n错误:', error.message)
+        }
+
+        askQuestion()
+        return
+      }
+
+      // 普通对话处理
       try {
         console.log('\nAgent 正在思考...\n')
 

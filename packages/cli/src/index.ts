@@ -130,40 +130,118 @@ async function runOnce(userMessage: string, llm: any) {
 }
 
 /**
+ * 列出所有会话
+ */
+async function listSessions(storage: SessionStorage) {
+  const sessions = await storage.listSessions()
+  
+  if (sessions.length === 0) {
+    console.log('\n暂无会话\n')
+    return
+  }
+  
+  console.log('\n可用会话列表：\n')
+  
+  sessions.forEach((session, index) => {
+    const number = `[${index + 1}]`
+    const id = session.id
+    const name = session.name ? ` (${session.name})` : ''
+    const messageCount = `${session.messageCount} 条消息`
+    
+    // 格式化时间
+    const date = new Date(session.updatedAt)
+    const now = new Date()
+    const isToday = date.toDateString() === now.toDateString()
+    const timeStr = isToday 
+      ? `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+      : `${date.getMonth() + 1}/${date.getDate()}`
+    
+    console.log(`${number} ${id}${name}`)
+    console.log(`    最后更新: ${timeStr} | ${messageCount}`)
+    console.log()
+  })
+}
+
+/**
  * 主函数
  */
 async function main() {
   try {
     // 1. 加载环境变量
     await loadEnv()
-    
-    // 2. 创建 LLM 客户端
-    const llm = createClientFromEnv()
 
-    // 3. 检查命令行参数
+    // 2. 检查命令行参数
     const args = process.argv.slice(2)
     
+    // 3. 创建存储实例
+    const storage = new SessionStorage()
+    
+    // 4. 处理斜杠命令
+    if (args.length > 0 && args[0] && args[0].startsWith('/')) {
+      const command = args[0]
+      
+      if (command === '/list') {
+        // 列出所有会话
+        await listSessions(storage)
+        return
+      } else if (command === '/session') {
+        // 指定会话启动 REPL
+        if (args.length < 2 || !args[1]) {
+          console.error('错误: /session 命令需要指定会话 ID')
+          console.error('用法: bun run dev /session <session-id>')
+          console.error('提示: 使用 /list 查看所有可用会话')
+          process.exit(1)
+        }
+        
+        const sessionId: string = args[1]
+        
+        // 检查会话是否存在
+        if (!storage.exists(sessionId)) {
+          console.error(`错误: 会话不存在: ${sessionId}`)
+          console.error('提示: 使用 /list 查看所有可用会话')
+          process.exit(1)
+        }
+        
+        // 创建 LLM 客户端
+        const llm = createClientFromEnv()
+        
+        console.log(`正在启动会话: ${sessionId}`)
+        
+        // 启动 REPL
+        startREPL({ llm, sessionId, storage })
+        
+        // 保持进程运行
+        setInterval(() => {}, 1000000)
+        return
+      } else {
+        console.error(`错误: 未知命令: ${command}`)
+        console.error('可用命令:')
+        console.error('  /list           - 列出所有会话')
+        console.error('  /session <id>   - 指定会话启动')
+        process.exit(1)
+      }
+    }
+    
+    // 5. 没有参数 - 启动默认 REPL
     if (args.length === 0) {
-      // 没有参数 - 启动 REPL 交互模式
+      const llm = createClientFromEnv()
       console.log('正在启动交互模式...')
       
-      const storage = new SessionStorage()
       const sessionId = 'default'
       
-      // 启动 REPL（不等待返回）
+      // 启动 REPL
       startREPL({ llm, sessionId, storage })
       
-      // 使用 setInterval 保持进程运行
+      // 保持进程运行
       setInterval(() => {}, 1000000)
-      
-      // 永不返回
       return
-    } else {
-      // 有参数 - 单次命令模式
-      const userMessage = args.join(' ')
-      console.log('正在初始化 Agent...\n')
-      await runOnce(userMessage, llm)
     }
+    
+    // 6. 有参数但不是斜杠命令 - 单次命令模式
+    const llm = createClientFromEnv()
+    const userMessage = args.join(' ')
+    console.log('正在初始化 Agent...\n')
+    await runOnce(userMessage, llm)
 
   } catch (error: any) {
     // 错误处理
@@ -171,7 +249,7 @@ async function main() {
     
     if (error.message.includes('ANTHROPIC_API_KEY')) {
       console.error('\n请检查:')
-      console.error('  1. 是否创建了 .env 文件')
+      console.error('  1. 是否创建了 config.env 文件')
       console.error('  2. 是否设置了 ANTHROPIC_API_KEY')
       console.error('  3. 如果使用第三方服务，是否设置了 ANTHROPIC_BASE_URL')
     }
