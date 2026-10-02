@@ -6,11 +6,14 @@
 
 import { Agent } from '@atsre/core'
 import type { AnthropicClient } from '@atsre/llm'
+import type { AgentEvent } from '@atsre/core'
 import { allTools } from '@atsre/tools'
 import { SessionStorage, AutoNamingTrigger, defaultAutoNamer } from '@atsre/session'
 import { commandRegistry } from './commands'
 import type { CommandContext } from './commands'
 import { REPLSessionManager } from './repl-session-manager'
+import { extractToolDisplay } from '@atsre/core'
+import * as ui from './ui'
 import * as readline from 'readline'
 
 /**
@@ -42,11 +45,42 @@ export async function startREPL(config: REPLConfig): Promise<never> {
     overrideAutoName: false
   })
 
-  // 3. 创建 Agent 实例
+  // 3. 用于收集每次对话中显示过的思考文本
+  let displayedThinkingTexts: string[] = []
+
+  // 4. 创建 Agent 实例，添加事件回调
   const agent = new Agent(llm, allTools, {
     maxSteps: 10,
     temperature: 1.0,
-    maxTokens: 4096
+    maxTokens: 4096,
+    onEvent: (event: AgentEvent) => {
+      switch (event.type) {
+        case 'llm_thinking':
+          // 显示 LLM 思考文本（灰色，完整输出）
+          ui.showInfo(event.text)
+          // 收集已显示的思考文本
+          displayedThinkingTexts.push(event.text)
+          break
+        
+        case 'tool_call_start':
+          // 显示工具调用开始（带文件名等参数）
+          const startDisplay = extractToolDisplay(event.toolName, event.args)
+          console.log(`🔧 ${startDisplay}`)
+          break
+        
+        case 'tool_call_success':
+          // 显示工具调用成功
+          const successDisplay = extractToolDisplay(event.toolName, event.args)
+          ui.showSuccess(successDisplay)
+          break
+        
+        case 'tool_call_error':
+          // 显示工具调用失败
+          const errorDisplay = extractToolDisplay(event.toolName, event.args)
+          ui.showError(`✗ ${errorDisplay} - ${event.error}`)
+          break
+      }
+    }
   })
 
   // 4. 创建 readline 接口
@@ -55,8 +89,7 @@ export async function startREPL(config: REPLConfig): Promise<never> {
     output: process.stdout
   })
 
-  console.log('\n欢迎使用 ATSRE Agent!')
-  console.log('输入 /help 查看可用命令，/exit 退出\n')
+  ui.showWelcome()
 
   // 5. 主循环
   const askQuestion = () => {
@@ -96,11 +129,11 @@ export async function startREPL(config: REPLConfig): Promise<never> {
             // 执行命令
             await command.execute(args, context)
           } else {
-            console.log(`\n未知命令: ${commandName}`)
+            ui.showError(`未知命令: ${commandName}`)
             console.log('输入 /help 查看可用命令\n')
           }
         } catch (error: any) {
-          console.error('\n错误:', error.message)
+          ui.showError(error)
         }
 
         askQuestion()
@@ -112,7 +145,10 @@ export async function startREPL(config: REPLConfig): Promise<never> {
         // 确保会话已创建（延迟创建）
         const currentSessionId = await sessionManager.ensureSession()
         
-        console.log('\nAgent 正在思考...\n')
+        // 重置本轮对话的思考文本收集
+        displayedThinkingTexts = []
+        
+        ui.showThinking()
 
         // 运行 Agent（使用当前会话的历史消息）
         const currentMessages = sessionManager.getCurrentMessages()
@@ -129,11 +165,23 @@ export async function startREPL(config: REPLConfig): Promise<never> {
         // 更新会话管理器中的消息历史
         sessionManager.updateMessages(result.messages)
 
-        // 显示 Agent 的回复
-        console.log('---')
-        console.log(`\nAgent: ${result.finalText}\n`)
-        console.log('---')
-        console.log(`步数: ${result.steps} | Tokens: ${result.usage.totalInputTokens + result.usage.totalOutputTokens}`)
+        // 去重：从最终回复中移除已显示的中间思考文本
+        let finalReply = result.finalText
+        for (const thinkingText of displayedThinkingTexts) {
+          finalReply = finalReply.replace(thinkingText, '').trim()
+        }
+
+        // 只有在去重后还有内容时才显示最终回复
+        if (finalReply) {
+          ui.showAgentReply(finalReply)
+        }
+        
+        // 显示统计信息
+        ui.showStats({
+          steps: result.steps,
+          inputTokens: result.usage.totalInputTokens,
+          outputTokens: result.usage.totalOutputTokens
+        })
 
         // 检查是否应该触发自动命名
         if (await autoNamingTrigger.shouldTrigger(currentSessionId, result.messages.length)) {
@@ -141,7 +189,7 @@ export async function startREPL(config: REPLConfig): Promise<never> {
         }
 
       } catch (error: any) {
-        console.error('\n错误:', error.message)
+        ui.showError(error)
       }
 
       // 继续下一轮
@@ -151,7 +199,12 @@ export async function startREPL(config: REPLConfig): Promise<never> {
 
   // 6. 处理 Ctrl+C
   rl.on('SIGINT', () => {
-    console.log('\n\n会话已保存，再见！')
+    const sessionId = sessionManager.getCurrentSessionId()
+    if (sessionId) {
+      ui.showSuccess('会话已保存，再见！')
+    } else {
+      console.log('\n再见！')
+    }
     rl.close()
     process.exit(0)
   })

@@ -11,6 +11,11 @@ export const currentCommand: Command = {
   description: '显示当前会话信息',
   
   async execute(_args: string[], context: CommandContext): Promise<void> {
+    if (!context.sessionId) {
+      console.log('\n错误: 尚未创建会话\n')
+      return
+    }
+    
     const sessionData = await context.storage.loadSession(context.sessionId)
     
     if (!sessionData) {

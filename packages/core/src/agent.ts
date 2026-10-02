@@ -15,7 +15,7 @@ export class Agent {
   private llm: AnthropicClient
   private tools: Map<string, Tool<any>>
   private toolDefinitions: AnthropicTool[]
-  private config: Required<AgentConfig>
+  private config: Required<Omit<AgentConfig, 'onEvent'>> & Pick<AgentConfig, 'onEvent'>
 
   constructor(llm: AnthropicClient, tools: Tool<any>[], config: AgentConfig = {}) {
     this.llm = llm
@@ -30,7 +30,8 @@ export class Agent {
     this.config = {
       maxSteps: config.maxSteps ?? 10,
       temperature: config.temperature ?? 1.0,
-      maxTokens: config.maxTokens ?? 4096
+      maxTokens: config.maxTokens ?? 4096,
+      onEvent: config.onEvent
     }
   }
 
@@ -63,6 +64,9 @@ export class Agent {
       // 累计 token 使用
       totalInputTokens += stepResult.inputTokens
       totalOutputTokens += stepResult.outputTokens
+
+      // 触发事件：LLM 思考文本
+      this.emitThinkingEvent(stepResult.content)
 
       // 将 LLM 的响应追加到消息历史
       messages.push({
@@ -142,12 +146,31 @@ export class Agent {
         const toolUse = block as ToolUseContent
         const tool = this.tools.get(toolUse.name)
 
+        // 触发事件：工具调用开始
+        this.config.onEvent?.({
+          type: 'tool_call_start',
+          toolName: toolUse.name,
+          toolId: toolUse.id,
+          args: toolUse.input
+        })
+
         if (!tool) {
           // 工具不存在
+          const errorMsg = `错误：工具 ${toolUse.name} 不存在`
+          
+          // 触发事件：工具调用失败
+          this.config.onEvent?.({
+            type: 'tool_call_error',
+            toolName: toolUse.name,
+            toolId: toolUse.id,
+            args: toolUse.input,
+            error: errorMsg
+          })
+          
           results.push({
             type: 'tool_result',
             tool_use_id: toolUse.id,
-            content: `错误：工具 ${toolUse.name} 不存在`,
+            content: errorMsg,
             is_error: true
           })
           continue
@@ -158,6 +181,15 @@ export class Agent {
           const validatedInput = tool.inputSchema.parse(toolUse.input)
           const result = await tool.execute(validatedInput)
 
+          // 触发事件：工具调用成功
+          this.config.onEvent?.({
+            type: 'tool_call_success',
+            toolName: toolUse.name,
+            toolId: toolUse.id,
+            args: toolUse.input,
+            result
+          })
+
           results.push({
             type: 'tool_result',
             tool_use_id: toolUse.id,
@@ -165,10 +197,21 @@ export class Agent {
           })
         } catch (error: any) {
           // 工具执行失败
+          const errorMsg = `执行失败: ${error.message}`
+          
+          // 触发事件：工具调用失败
+          this.config.onEvent?.({
+            type: 'tool_call_error',
+            toolName: toolUse.name,
+            toolId: toolUse.id,
+            args: toolUse.input,
+            error: errorMsg
+          })
+          
           results.push({
             type: 'tool_result',
             tool_use_id: toolUse.id,
-            content: `执行失败: ${error.message}`,
+            content: errorMsg,
             is_error: true
           })
         }
@@ -176,6 +219,28 @@ export class Agent {
     }
 
     return results
+  }
+
+  /**
+   * 触发 LLM 思考事件
+   * 
+   * 从内容块中提取文本块，触发思考事件
+   * 
+   * @param content - LLM 返回的内容块
+   */
+  private emitThinkingEvent(content: ContentBlock[]): void {
+    const textBlocks = content
+      .filter(block => block.type === 'text')
+      .map(block => (block as any).text)
+
+    const thinkingText = textBlocks.join('\n').trim()
+    
+    if (thinkingText && this.config.onEvent) {
+      this.config.onEvent({
+        type: 'llm_thinking',
+        text: thinkingText
+      })
+    }
   }
 
   /**

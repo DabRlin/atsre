@@ -1,12 +1,24 @@
 import type { Message, ContentBlock } from '@atsre/llm'
 
 /**
+ * Agent 事件类型
+ * 
+ * 用于实时通知 Agent 的执行过程
+ */
+export type AgentEvent = 
+  | { type: 'llm_thinking', text: string }  // LLM 思考文本（完整输出）
+  | { type: 'tool_call_start', toolName: string, toolId: string, args: any }  // 工具调用开始
+  | { type: 'tool_call_success', toolName: string, toolId: string, args: any, result: string }  // 工具调用成功
+  | { type: 'tool_call_error', toolName: string, toolId: string, args: any, error: string }  // 工具调用失败
+
+/**
  * Agent 配置
  */
 export interface AgentConfig {
   maxSteps?: number        // 最大循环步数，防止死循环
   temperature?: number     // LLM 温度参数
   maxTokens?: number       // 最大生成 token 数
+  onEvent?: (event: AgentEvent) => void  // 事件回调函数
 }
 
 /**

@@ -5,4 +5,5 @@
  */
 
 export { Agent } from './agent'
-export type { AgentConfig, AgentResult } from './types'
+export type { AgentConfig, AgentResult, AgentEvent } from './types'
+export { extractToolDisplay } from './tool-param-extractor'

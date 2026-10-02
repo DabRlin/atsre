@@ -12,6 +12,11 @@ export const renameCommand: Command = {
   usage: '/rename <new-name>',
   
   async execute(args: string[], context: CommandContext): Promise<void> {
+    if (!context.sessionId) {
+      console.log('\n错误: 尚未创建会话\n')
+      return
+    }
+    
     if (args.length === 0) {
       console.log('\n错误: 请提供新名称')
       console.log('用法: /rename <new-name>')

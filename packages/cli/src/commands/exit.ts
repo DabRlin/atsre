@@ -12,7 +12,11 @@ export const exitCommand: Command = {
   description: '退出 REPL',
   
   async execute(_args: string[], context: CommandContext): Promise<void> {
-    console.log('\n再见！会话已保存到 ~/.atsre/sessions/' + context.sessionId + '.jsonl')
+    if (context.sessionId) {
+      console.log('\n再见！会话已保存到 ~/.atsre/sessions/' + context.sessionId + '.jsonl')
+    } else {
+      console.log('\n再见！')
+    }
     context.rl.close()
     process.exit(0)
   }

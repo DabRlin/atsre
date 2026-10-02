@@ -13,7 +13,7 @@ import type { REPLSessionManager } from '../repl-session-manager'
  * 包含命令执行所需的所有状态和依赖
  */
 export interface CommandContext {
-  sessionId: string
+  sessionId: string | null  // null 表示尚未创建会话（延迟创建模式）
   storage: SessionStorage
   messages: Message[]
   rl: ReadlineInterface
