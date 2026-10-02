@@ -5,6 +5,7 @@
 import type { Message } from '@atsre/llm'
 import type { SessionStorage } from '@atsre/session'
 import type { Interface as ReadlineInterface } from 'readline'
+import type { REPLSessionManager } from '../repl-session-manager'
 
 /**
  * 命令执行上下文
@@ -16,6 +17,7 @@ export interface CommandContext {
   storage: SessionStorage
   messages: Message[]
   rl: ReadlineInterface
+  sessionManager: REPLSessionManager
 }
 
 /**

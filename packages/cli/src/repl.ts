@@ -5,11 +5,12 @@
  */
 
 import { Agent } from '@atsre/core'
-import type { AnthropicClient, Message } from '@atsre/llm'
+import type { AnthropicClient } from '@atsre/llm'
 import { allTools } from '@atsre/tools'
-import { SessionStorage } from '@atsre/session'
+import { SessionStorage, AutoNamingTrigger, defaultAutoNamer } from '@atsre/session'
 import { commandRegistry } from './commands'
 import type { CommandContext } from './commands'
+import { REPLSessionManager } from './repl-session-manager'
 import * as readline from 'readline'
 
 /**
@@ -17,8 +18,9 @@ import * as readline from 'readline'
  */
 interface REPLConfig {
   llm: AnthropicClient
-  sessionId: string
+  sessionId: string | null  // null 表示延迟创建
   storage: SessionStorage
+  enableAutoNaming?: boolean
 }
 
 /**
@@ -27,32 +29,27 @@ interface REPLConfig {
  * @param config - REPL 配置
  */
 export async function startREPL(config: REPLConfig): Promise<never> {
-  const { llm, sessionId, storage } = config
+  const { llm, sessionId, storage, enableAutoNaming = true } = config
 
-  // 1. 加载或创建会话
-  let messages: Message[] = []
-  let sessionExists = storage.exists(sessionId)
+  // 1. 创建会话管理器并初始化
+  const sessionManager = new REPLSessionManager(storage, sessionId)
+  await sessionManager.initialize()
 
-  if (sessionExists) {
-    const sessionData = await storage.loadSession(sessionId)
-    if (sessionData) {
-      messages = sessionData.messages
-      console.log(`\n已加载会话: ${sessionId}`)
-      console.log(`历史消息数: ${sessionData.metadata.messageCount}`)
-    }
-  } else {
-    await storage.createSession(sessionId)
-    console.log(`\n已创建新会话: ${sessionId}`)
-  }
+  // 2. 创建自动命名触发器
+  const autoNamingTrigger = new AutoNamingTrigger(storage, {
+    enabled: enableAutoNaming,
+    namer: defaultAutoNamer,
+    overrideAutoName: false
+  })
 
-  // 2. 创建 Agent 实例
+  // 3. 创建 Agent 实例
   const agent = new Agent(llm, allTools, {
     maxSteps: 10,
     temperature: 1.0,
     maxTokens: 4096
   })
 
-  // 3. 创建 readline 接口
+  // 4. 创建 readline 接口
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -61,7 +58,7 @@ export async function startREPL(config: REPLConfig): Promise<never> {
   console.log('\n欢迎使用 ATSRE Agent!')
   console.log('输入 /help 查看可用命令，/exit 退出\n')
 
-  // 4. 主循环 - 使用 question 方法
+  // 5. 主循环
   const askQuestion = () => {
     rl.question('\n> ', async (input: string) => {
       const userInput = input.trim()
@@ -89,10 +86,11 @@ export async function startREPL(config: REPLConfig): Promise<never> {
           if (command) {
             // 构建命令上下文
             const context: CommandContext = {
-              sessionId,
+              sessionId: sessionManager.getCurrentSessionId(),
               storage,
-              messages,
-              rl
+              messages: sessionManager.getCurrentMessages(),
+              rl,
+              sessionManager
             }
             
             // 执行命令
@@ -111,27 +109,36 @@ export async function startREPL(config: REPLConfig): Promise<never> {
 
       // 普通对话处理
       try {
+        // 确保会话已创建（延迟创建）
+        const currentSessionId = await sessionManager.ensureSession()
+        
         console.log('\nAgent 正在思考...\n')
 
-        // 运行 Agent（使用历史消息）
-        const result = await agent.run(userInput, messages)
+        // 运行 Agent（使用当前会话的历史消息）
+        const currentMessages = sessionManager.getCurrentMessages()
+        const result = await agent.run(userInput, currentMessages)
 
         // 保存新消息到会话
-        const oldMessageCount = messages.length
+        const oldMessageCount = currentMessages.length
         const newMessages = result.messages.slice(oldMessageCount)
         
         for (const msg of newMessages) {
-          await storage.appendMessage(sessionId, msg)
+          await storage.appendMessage(currentSessionId, msg)
         }
 
-        // 更新消息历史
-        messages = result.messages
+        // 更新会话管理器中的消息历史
+        sessionManager.updateMessages(result.messages)
 
         // 显示 Agent 的回复
         console.log('---')
         console.log(`\nAgent: ${result.finalText}\n`)
         console.log('---')
         console.log(`步数: ${result.steps} | Tokens: ${result.usage.totalInputTokens + result.usage.totalOutputTokens}`)
+
+        // 检查是否应该触发自动命名
+        if (await autoNamingTrigger.shouldTrigger(currentSessionId, result.messages.length)) {
+          await autoNamingTrigger.trigger(currentSessionId, result.messages)
+        }
 
       } catch (error: any) {
         console.error('\n错误:', error.message)
@@ -142,7 +149,7 @@ export async function startREPL(config: REPLConfig): Promise<never> {
     })
   }
 
-  // 5. 处理 Ctrl+C
+  // 6. 处理 Ctrl+C
   rl.on('SIGINT', () => {
     console.log('\n\n会话已保存，再见！')
     rl.close()

@@ -13,7 +13,7 @@
 import { Agent } from '@atsre/core'
 import { createClientFromEnv } from '@atsre/llm'
 import { allTools } from '@atsre/tools'
-import { SessionStorage } from '@atsre/session'
+import { SessionStorage, defaultAutoNamer } from '@atsre/session'
 import { startREPL } from './repl'
 import { resolve } from 'path'
 import { existsSync } from 'fs'
@@ -173,8 +173,8 @@ async function main() {
     // 2. 检查命令行参数
     const args = process.argv.slice(2)
     
-    // 3. 创建存储实例
-    const storage = new SessionStorage()
+    // 3. 创建存储实例（传入 autoNamer）
+    const storage = new SessionStorage(undefined, undefined, defaultAutoNamer)
     
     // 4. 处理斜杠命令
     if (args.length > 0 && args[0] && args[0].startsWith('/')) {
@@ -222,15 +222,14 @@ async function main() {
       }
     }
     
-    // 5. 没有参数 - 启动默认 REPL
+    // 5. 没有参数 - 启动 REPL，延迟创建会话
     if (args.length === 0) {
       const llm = createClientFromEnv()
       console.log('正在启动交互模式...')
+      console.log('提示: 使用 /help 查看可用命令\n')
       
-      const sessionId = 'default'
-      
-      // 启动 REPL
-      startREPL({ llm, sessionId, storage })
+      // 启动 REPL，不预先创建会话（延迟创建）
+      startREPL({ llm, sessionId: null, storage })
       
       // 保持进程运行
       setInterval(() => {}, 1000000)

@@ -13,6 +13,9 @@ export { exitCommand } from './exit'
 export { sessionsCommand } from './sessions'
 export { renameCommand } from './rename'
 export { currentCommand } from './current'
+export { newCommand } from './new'
+export { switchCommand } from './switch'
+export { deleteCommand, deleteConfirmCommand } from './delete'
 
 // 自动注册所有命令
 import { commandRegistry } from './registry'
@@ -21,6 +24,9 @@ import { exitCommand } from './exit'
 import { sessionsCommand } from './sessions'
 import { renameCommand } from './rename'
 import { currentCommand } from './current'
+import { newCommand } from './new'
+import { switchCommand } from './switch'
+import { deleteCommand, deleteConfirmCommand } from './delete'
 
 // 注册所有内置命令
 commandRegistry.registerAll([
@@ -28,5 +34,9 @@ commandRegistry.registerAll([
   exitCommand,
   sessionsCommand,
   renameCommand,
-  currentCommand
+  currentCommand,
+  newCommand,
+  switchCommand,
+  deleteCommand,
+  deleteConfirmCommand
 ])

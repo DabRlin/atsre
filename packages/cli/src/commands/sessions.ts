@@ -22,8 +22,15 @@ export const sessionsCommand: Command = {
     
     sessions.forEach((session, index) => {
       const number = `[${index + 1}]`
-      const id = session.id
-      const name = session.name ? ` - ${session.name}` : ''
+      
+      // 优先显示名称，如果没有名称则显示 ID
+      let displayName: string
+      if (session.name) {
+        displayName = `${session.name} (${session.id})`
+      } else {
+        displayName = session.id
+      }
+      
       const messageCount = `${session.messageCount} 条消息`
       
       // 格式化时间
@@ -34,7 +41,7 @@ export const sessionsCommand: Command = {
         ? `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
         : `${date.getMonth() + 1}/${date.getDate()}`
       
-      console.log(`${number} ${id}${name}`)
+      console.log(`${number} ${displayName}`)
       console.log(`    最后更新: ${timeStr} | ${messageCount}`)
       console.log()
     })

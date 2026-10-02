@@ -297,4 +297,20 @@ export class SessionStorage {
     lines[0] = JSON.stringify({ metadata })
     await writeFile(sessionPath, lines.join('\n'), 'utf-8')
   }
+
+  /**
+   * 删除会话
+   * 
+   * @param sessionId - 会话 ID
+   */
+  async deleteSession(sessionId: string): Promise<void> {
+    const sessionPath = this.getSessionPath(sessionId)
+
+    if (!existsSync(sessionPath)) {
+      throw new Error(`会话不存在: ${sessionId}`)
+    }
+
+    const { unlink } = await import('fs/promises')
+    await unlink(sessionPath)
+  }
 }

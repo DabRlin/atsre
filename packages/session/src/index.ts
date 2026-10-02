@@ -27,3 +27,11 @@ export {
   LLMAutoNamer,
   defaultAutoNamer
 } from './auto-namer'
+
+// 导出自动命名触发器
+export {
+  AutoNamingTrigger
+} from './auto-naming-trigger'
+export type {
+  AutoNamingTriggerConfig
+} from './auto-naming-trigger'

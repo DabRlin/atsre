@@ -54,6 +54,6 @@ export class ReadableIdGenerator implements SessionIdGenerator {
 }
 
 /**
- * 默认使用简单 ID 生成器
+ * 默认使用短 ID 生成器（更友好）
  */
-export const defaultIdGenerator = new SimpleIdGenerator()
+export const defaultIdGenerator = new ShortIdGenerator()
